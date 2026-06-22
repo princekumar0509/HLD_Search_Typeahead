@@ -1,0 +1,122 @@
+# docker-compose.yml — the full local stack:
+#   nginx (LB) -> app1/app2/app3 (stateless Express) -> Postgres + Redis
+#   worker (flusher + decay) drains the shared Redis queue / recomputes trending
+#   seed / loadtest are on-demand profiles (do not run on `up`)
+#
+# Run:   docker compose up -d --build
+# Seed:  docker compose run --rm seed
+# Demo:  see README.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-typeahead}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-typeahead}
+      POSTGRES_DB: ${POSTGRES_DB:-typeahead}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-typeahead}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # ---- App replicas (3 identical, stateless) --------------------------------
+  # Shared config via a YAML anchor; each replica differs only by INSTANCE_ID.
+  app1: &app
+    build: ./app
+    environment: &app_env
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-typeahead}:${POSTGRES_PASSWORD:-typeahead}@postgres:5432/${POSTGRES_DB:-typeahead}
+      REDIS_URL: redis://redis:6379
+      CACHE_NODES: ${CACHE_NODES:-cache-a,cache-b,cache-c}
+      VNODES_PER_NODE: ${VNODES_PER_NODE:-150}
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-300}
+      FLUSH_INTERVAL_MS: ${FLUSH_INTERVAL_MS:-5000}
+      FLUSH_MAX_BATCH: ${FLUSH_MAX_BATCH:-1000}
+      DECAY_FACTOR: ${DECAY_FACTOR:-0.85}
+      INSTANCE_ID: app1
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  app2:
+    <<: *app
+    environment:
+      <<: *app_env
+      INSTANCE_ID: app2
+
+  app3:
+    <<: *app
+    environment:
+      <<: *app_env
+      INSTANCE_ID: app3
+
+  # ---- Load balancer --------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
+    depends_on: [app1, app2, app3]
+    restart: unless-stopped
+
+  # ---- Background worker (flusher + decay) ----------------------------------
+  worker:
+    <<: *app
+    command: ["node", "workers/index.js"]
+    environment:
+      <<: *app_env
+      INSTANCE_ID: worker
+      DECAY_INTERVAL_MS: ${DECAY_INTERVAL_MS:-86400000}
+    # Read-only mount of the dataset so the worker can run verify/load scripts.
+    volumes:
+      - ./reference:/reference:ro
+    ports: []
+
+  # ---- One-shot seed loader (profile: seed) ---------------------------------
+  # Bulk-loads queries.csv via COPY. Run explicitly: docker compose run --rm seed
+  seed:
+    <<: *app
+    command: ["node", "scripts/load.js"]
+    environment:
+      <<: *app_env
+      QUERIES_CSV: /reference/queries.csv
+      SCHEMA_SQL: /app/db/schema.sql
+    volumes:
+      - ./reference:/reference:ro
+      - ./db:/app/db:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    profiles: ["seed"]
+    restart: "no"
+
+  # ---- On-demand load test (profile: loadtest) ------------------------------
+  # Replays search_events.csv through nginx -> POST /search to exercise the
+  # batch-write pipeline. Run: docker compose run --rm loadtest
+  loadtest:
+    <<: *app
+    command: ["node", "scripts/load_test.js"]
+    environment:
+      <<: *app_env
+      TARGET: http://nginx:80
+      EVENTS_CSV: /reference/search_events.csv
+    volumes:
+      - ./reference:/reference:ro
+    depends_on: [nginx]
+    profiles: ["loadtest"]
+    restart: "no"
+
+volumes:
+  pgdata:

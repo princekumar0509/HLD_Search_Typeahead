@@ -1,0 +1,24 @@
+{
+  "name": "search-typeahead",
+  "version": "1.0.0",
+  "description": "Search typeahead system — distributed cache + batched writes + recency-aware trending",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "flusher": "node workers/flusher.js",
+    "decay": "node workers/decayJob.js",
+    "worker": "node workers/index.js",
+    "load": "node scripts/load.js",
+    "load-test": "node scripts/load_test.js",
+    "demo-hash": "node scripts/demo_consistent_hash.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ioredis": "^5.4.1",
+    "pg": "^8.12.0",
+    "pg-copy-streams": "^6.0.6"
+  }
+}

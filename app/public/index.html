@@ -1,0 +1,108 @@
+<!-- Vanilla HTML/CSS/JS dashboard (no framework, no build step, no CDNs).
+     Served as a static file by the Express app. Live metrics poll /stats. -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Search Typeahead — live dashboard</title>
+<link rel="stylesheet" href="/styles.css" />
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">⌕</span>
+      <div>
+        <h1>Search Typeahead</h1>
+        <p class="tagline">distributed cache · consistent hashing · batched writes · forward-decay trending</p>
+      </div>
+    </div>
+    <div class="live" title="metrics polling /stats">
+      <span class="dot" id="live-dot"></span> LIVE
+    </div>
+  </header>
+
+  <!-- ── Search ───────────────────────────────────────────── -->
+  <section class="panel search-panel">
+    <div class="searchbox">
+      <input id="q" type="text" autocomplete="off"
+             placeholder="Type to search… (e.g. wiki, iph) — Enter to submit"
+             aria-label="Search" />
+      <button id="go">Search</button>
+      <ul id="suggestions" class="suggestions" role="listbox" hidden></ul>
+    </div>
+    <div class="route" id="route">
+      <span class="route-item">prefix <b id="r-prefix">—</b></span>
+      <span class="arrow">→</span>
+      <span class="route-item">owner node <b id="r-node" class="node-pill">—</b></span>
+      <span class="route-item">cache <b id="r-state" class="state">—</b></span>
+      <span class="route-item">last <b id="r-lat">—</b></span>
+    </div>
+    <p id="status" class="status"></p>
+  </section>
+
+  <!-- ── Live metrics ─────────────────────────────────────── -->
+  <section class="metrics" id="metrics">
+    <div class="card" data-accent="blue">
+      <div class="card-top"><span class="card-label">p95 latency</span><span class="badge">/suggest</span></div>
+      <div class="card-value"><span id="m-p95">0</span><span class="unit">ms</span></div>
+      <div class="card-sub">p50 <b id="m-p50">0</b>ms · p99 <b id="m-p99">0</b>ms · <span id="m-samples">0</span> samples</div>
+      <svg class="spark" id="spark-lat" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
+    </div>
+
+    <div class="card" data-accent="green">
+      <div class="card-top"><span class="card-label">cache hit rate</span><span class="badge">cache-aside</span></div>
+      <div class="card-value"><span id="m-hitrate">0</span><span class="unit">%</span></div>
+      <div class="card-sub"><span class="hit">▲ <b id="m-hits">0</b> hits</span> · <span class="miss">▼ <b id="m-misses">0</b> misses</span></div>
+      <svg class="spark" id="spark-hit" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
+    </div>
+
+    <div class="card" data-accent="violet">
+      <div class="card-top"><span class="card-label">searches submitted</span><span class="badge">POST /search</span></div>
+      <div class="card-value"><span id="m-searches">0</span></div>
+      <div class="card-sub">enqueued to Redis buffer, returned instantly</div>
+    </div>
+
+    <div class="card" data-accent="amber">
+      <div class="card-top"><span class="card-label">buffer pending</span><span class="badge">flush ≤5s / 1000</span></div>
+      <div class="card-value"><span id="m-queue">0</span></div>
+      <div class="queue-bar"><span id="queue-fill"></span></div>
+      <div class="card-sub">events waiting in the write queue</div>
+    </div>
+
+    <div class="card" data-accent="cyan">
+      <div class="card-top"><span class="card-label">DB write batches</span><span class="badge">UPSERT</span></div>
+      <div class="card-value"><span id="m-writes">0</span></div>
+      <div class="card-sub">one batched UPSERT per flush window</div>
+    </div>
+
+    <div class="card" data-accent="pink">
+      <div class="card-top"><span class="card-label">write reduction</span><span class="badge">batching</span></div>
+      <div class="card-value"><span id="m-reduction">—</span><span class="unit">×</span></div>
+      <div class="card-sub"><b id="m-subs">0</b> searches → <b id="m-batches">0</b> writes</div>
+    </div>
+  </section>
+
+  <!-- ── Consistent-hash ring (kept above the fold) ───────── -->
+  <section class="panel ring-panel">
+    <div class="board-head"><h2>🧭 Consistent-hash ring</h2><span class="hint" id="ring-hint">prefix → logical cache node · keyspace share (sampled)</span></div>
+    <div class="ring" id="ring"></div>
+  </section>
+
+  <!-- ── Leaderboards ─────────────────────────────────────── -->
+  <section class="boards">
+    <div class="panel board">
+      <div class="board-head"><h2>🔥 Trending now</h2><span class="hint">recency-weighted (forward decay)</span></div>
+      <table>
+        <thead><tr><th>#</th><th>query</th><th class="num">trend</th><th class="num">all-time</th></tr></thead>
+        <tbody id="trending-body"><tr><td colspan="4" class="muted">loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="panel board">
+      <div class="board-head"><h2>⭐ Most popular</h2><span class="hint">all-time search count</span></div>
+      <table>
+        <thead><tr><th>#</th><th>query</th><th class="num">all-time</th><th class="num">trend</th></tr></thead>
+        <tbody id="popular-body"><tr><td colspan="4" class="muted">loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="/app.js"></script>

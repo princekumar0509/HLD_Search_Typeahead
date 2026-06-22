@@ -1,0 +1,158 @@
+/* ── Design tokens ─────────────────────────────────────────
+   Dark "observability" theme. Two mechanisms keep it on ONE screen at any size:
+   1. The app is a viewport-height flex column; the leaderboards FLEX to fill
+      leftover height (table height:100% → rows stretch), so there's never an
+      empty bottom and never page scroll.
+   2. A height media query: a compact base fits short laptops (≤~760px); on tall
+      windows everything scales UP so big screens look full, not sparse. */
+:root {
+  --bg:#0b0e14; --bg-2:#0f131c; --panel:#141a25; --panel-2:#1a2230; --border:#232c3b;
+  --text:#e6edf6; --muted:#8593a8; --faint:#5b6678;
+  --blue:#5b9dff; --green:#41d6a3; --violet:#a78bfa; --amber:#f6c453; --cyan:#4fd1d9; --pink:#f472b6; --red:#ff6b6b;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 13px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--sans); color: var(--text);
+  background:
+    radial-gradient(1000px 520px at 80% -10%, rgba(91,157,255,.10), transparent 60%),
+    radial-gradient(800px 520px at -10% 8%, rgba(167,139,250,.08), transparent 55%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+.app { max-width: 1320px; margin: 0 auto; padding: 8px 20px;
+  height: 100vh; display: flex; flex-direction: column; gap: 7px; }
+
+/* ── Topbar ───────────────────────────────────────────────── */
+.topbar { display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo { width: 38px; height: 38px; flex: none; display: grid; place-items: center;
+  font-size: 21px; border-radius: 11px; color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--violet)); box-shadow: 0 8px 20px rgba(91,157,255,.38); }
+h1 { font-size: 19px; margin: 0; letter-spacing: -.2px; }
+.tagline { margin: 1px 0 0; font-size: 11.5px; color: var(--muted); }
+.live { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; color: var(--green); font-family: var(--mono); }
+.live .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
+.live .dot.beat { animation: beat .9s ease-out; }
+@keyframes beat { 0% { box-shadow: 0 0 0 0 rgba(65,214,163,.55);} 100% { box-shadow: 0 0 0 10px rgba(65,214,163,0);} }
+
+/* ── Panels ───────────────────────────────────────────────── */
+.panel { background: linear-gradient(180deg, var(--panel), var(--bg-2));
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 14px; }
+
+/* ── Search ───────────────────────────────────────────────── */
+.searchbox { position: relative; display: flex; gap: 10px; }
+#q { flex: 1; padding: 11px 15px; font-size: 15px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  transition: border-color .15s, box-shadow .15s; }
+#q::placeholder { color: var(--faint); }
+#q:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(91,157,255,.2); }
+#go { padding: 0 22px; font-size: 14.5px; font-weight: 600; color: #061018; cursor: pointer;
+  background: linear-gradient(135deg, var(--blue), #7aa9ff); border: 0; border-radius: 10px;
+  transition: transform .1s, filter .15s; }
+#go:hover { filter: brightness(1.08); } #go:active { transform: translateY(1px); }
+.suggestions { position: absolute; top: 50px; left: 0; right: 100px; z-index: 20;
+  margin: 0; padding: 5px; list-style: none;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 11px;
+  box-shadow: 0 18px 46px rgba(0,0,0,.55); max-height: 300px; overflow: auto; }
+.suggestions li { display: flex; justify-content: space-between; gap: 12px;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--text); font-size: 14px; }
+.suggestions li.active, .suggestions li:hover { background: rgba(91,157,255,.14); }
+.suggestions .score { color: var(--muted); font-family: var(--mono); font-size: 12.5px; }
+.suggestions mark { background: rgba(246,196,83,.28); color: var(--amber); border-radius: 3px; padding: 0 1px; }
+.route { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; margin-top: 11px;
+  font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+.route .arrow { color: var(--faint); }
+.route b { color: var(--text); font-weight: 600; }
+.node-pill { background: rgba(79,209,217,.16); color: var(--cyan); padding: 2px 9px; border-radius: 999px; }
+.state.hit { color: var(--green); } .state.miss { color: var(--amber); }
+.status { min-height: 16px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.status.ok { color: var(--green); } .status.error { color: var(--red); }
+
+/* ── Metric cards ─────────────────────────────────────────── */
+.metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 11px; }
+@media (max-width: 1080px) { .metrics { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px)  { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.card { position: relative; overflow: hidden; padding: 11px 13px;
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+  border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; }
+.card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.card[data-accent=blue]{--accent:var(--blue);} .card[data-accent=green]{--accent:var(--green);}
+.card[data-accent=violet]{--accent:var(--violet);} .card[data-accent=amber]{--accent:var(--amber);}
+.card[data-accent=cyan]{--accent:var(--cyan);} .card[data-accent=pink]{--accent:var(--pink);}
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.card-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.badge { font-size: 9px; color: var(--faint); font-family: var(--mono); white-space: nowrap;
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 6px; }
+.card-value { font-family: var(--mono); font-size: 24px; font-weight: 700; line-height: 1.05;
+  margin: 5px 0 2px; color: var(--text); letter-spacing: -1px; }
+.card-value .unit { font-size: 14px; color: var(--muted); margin-left: 2px; }
+.card-sub { font-size: 10.5px; color: var(--muted); font-family: var(--mono); margin-top: auto; line-height: 1.4; }
+.card-sub b { color: var(--text); }
+.hit { color: var(--green); } .miss { color: var(--amber); }
+.card.flash { animation: flash .5s ease-out; }
+@keyframes flash { 0% { background: var(--panel-2); } 100% {} }
+.spark { width: 100%; height: 18px; margin-top: 6px; display: block; }
+.queue-bar { height: 6px; background: rgba(246,196,83,.14); border-radius: 999px; overflow: hidden; margin: 6px 0; }
+.queue-bar span { display: block; height: 100%; width: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber), #ffd97a); transition: width .4s ease; }
+
+/* ── Ring ─────────────────────────────────────────────────── */
+.board-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.board-head h2 { font-size: 14.5px; margin: 0; }
+.hint { font-size: 11px; color: var(--faint); }
+.ring { display: flex; flex-wrap: wrap; gap: 10px; }
+.node { flex: 1; min-width: 185px; padding: 10px 13px; border-radius: 11px;
+  background: var(--bg); border: 1px solid var(--border); transition: all .2s; }
+.node-row { display: flex; align-items: baseline; justify-content: space-between; }
+.node .nm { font-family: var(--mono); font-size: 13px; color: var(--text); }
+.node-share { font-family: var(--mono); font-size: 14.5px; font-weight: 700; color: var(--cyan); }
+.node-bar { height: 6px; background: rgba(79,209,217,.12); border-radius: 999px; overflow: hidden; margin: 7px 0 6px; }
+.node-bar span { display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--cyan), #8fe9ee); transition: width .5s ease; }
+.node .meta { font-size: 10.5px; color: var(--muted); }
+.node.owner { border-color: var(--cyan); background: rgba(79,209,217,.1); box-shadow: 0 0 0 2px rgba(79,209,217,.18); }
+.node.owner .nm { color: var(--cyan); }
+
+/* ── Boards — flex-fill remaining height ──────────────────── */
+.boards { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; flex: 1; min-height: 0; }
+@media (max-width: 680px) { .boards { grid-template-columns: 1fr; } }
+.board { padding: 11px 15px; display: flex; flex-direction: column; min-height: 0; }
+.board table { width: 100%; border-collapse: collapse; flex: 1; height: 100%; }
+.board th, .board td { text-align: left; padding: 2px 8px; font-size: 12.5px;
+  border-bottom: 1px solid var(--border); vertical-align: middle; }
+.board th { color: var(--muted); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+.board td.num, .board th.num { text-align: right; font-family: var(--mono); }
+.board tbody tr:last-child td { border-bottom: 0; }
+.board tbody tr { transition: background .25s; }
+.board tbody tr.bump { background: rgba(65,214,163,.12); }
+.board td .rank, .board td.rank { color: var(--faint); font-family: var(--mono); }
+.muted { color: var(--faint); }
+
+/* ── Tall windows: scale up modestly so big screens look full, not sparse.
+   The flex-fill boards do most of the work; this just enlarges fonts/boxes. ── */
+@media (min-height: 850px) {
+  .app { gap: 12px; padding: 13px 22px; }
+  .logo { width: 44px; height: 44px; font-size: 24px; }
+  h1 { font-size: 22px; } .tagline { font-size: 12.5px; }
+  .panel { padding: 13px 16px; }
+  #q { padding: 13px 17px; font-size: 16px; } #go { font-size: 15.5px; padding: 0 26px; }
+  .suggestions { top: 56px; }
+  .route { font-size: 13.5px; margin-top: 13px; gap: 16px; }
+  .status { font-size: 13px; }
+  .metrics { gap: 13px; }
+  .card { padding: 13px 15px; }
+  .card-label { font-size: 11px; } .card-value { font-size: 30px; margin: 7px 0 3px; }
+  .card-value .unit { font-size: 16px; } .card-sub { font-size: 12px; }
+  .spark { height: 30px; margin-top: 9px; }
+  .board-head h2 { font-size: 16px; } .hint { font-size: 12px; }
+  .node { padding: 12px 16px; min-width: 210px; }
+  .node .nm { font-size: 14.5px; } .node-share { font-size: 16px; } .node .meta { font-size: 12px; }
+  .node-bar { height: 7px; }
+  .board th, .board td { font-size: 14px; padding: 4px 9px; }
+  .board th { font-size: 11px; }
+}
